@@ -137,49 +137,71 @@
       if (e.key === "Enter") sendMessage();
     });
 
-    // Send message
     function sendMessage() {
       const msg = chatInput.value.trim();
       if (msg === "") return;
 
-      const userMsg = { name: uniqueName, message: msg, time: new Date().toLocaleTimeString() };
-
       const messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+
+      const userMsg = { name: uniqueName, message: msg, time: new Date().toLocaleTimeString() };
       messages.push(userMsg);
-
-      // If it's the first message, trigger SDJ Automations auto-reply
-      if (!messages.some(m => m.name === "SDJ Automations")) {
-        const botMsg = {
-          name: "SDJ Automations",
-          message:
-            "Greetings! Welcome to SDJ Online Support Portal, I am SDJ Automations. To make it easier for our staff members to know who you are, please state your Roblox username, and your Discord username if you have Discord.",
-          time: new Date().toLocaleTimeString()
-        };
-        messages.push(botMsg);
-      }
-
       localStorage.setItem("chatMessages", JSON.stringify(messages));
 
       displayMessage(userMsg);
-      displayMessage({ name: "SDJ Automations", message: messages[messages.length - 1].message });
+
+      // SDJ Automations Responses
+      const userMessagesCount = messages.filter(m => m.name === uniqueName).length;
+      let botMsg = null;
+
+      if (userMessagesCount === 1) {
+        botMsg = {
+          name: "SDJ Automations",
+          message:
+            "Greetings! Welcome to SDJ Online Support Portal, I am SDJ Automations. To make it easier for our staff members to know who you are please state your Roblox username, and your Discord username if you have Discord.",
+          time: new Date().toLocaleTimeString()
+        };
+      } else if (userMessagesCount === 2) {
+        botMsg = {
+          name: "SDJ Automations",
+          message:
+            "Thank you for understanding. Please note our staff members are usually busy, so please cope with us! A staff member will be with you soon.",
+          time: new Date().toLocaleTimeString()
+        };
+      }
+
+      if (botMsg) {
+        messages.push(botMsg);
+        localStorage.setItem("chatMessages", JSON.stringify(messages));
+        setTimeout(() => displayMessage(botMsg), 500);
+      }
+
       chatInput.value = "";
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Display message
     function displayMessage({ name, message }) {
       const msgElement = document.createElement("div");
       const color = name === "SDJ Automations" ? "text-blue-600" : "text-orange-700";
       msgElement.innerHTML = `<span class='font-semibold ${color}'>${name}:</span> ${message}`;
       chatBox.appendChild(msgElement);
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Load messages
     function loadMessages() {
+      const data = JSON.parse(localStorage.getItem("chatData") || "{}");
+
+      // Check if older than 24 hours
+      if (data.timestamp && Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem("chatMessages");
+        localStorage.removeItem("chatData");
+      }
+
       chatBox.innerHTML = `<div class="text-center text-gray-500">Welcome back to SDJ Online Support!</div>`;
       const stored = JSON.parse(localStorage.getItem("chatMessages") || "[]");
       stored.forEach(displayMessage);
-      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Update timestamp
+      localStorage.setItem("chatData", JSON.stringify({ timestamp: Date.now() }));
     }
   </script>
 </body>
