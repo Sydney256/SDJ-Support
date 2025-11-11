@@ -137,23 +137,31 @@
       if (e.key === "Enter") sendMessage();
     });
 
-    // Save and display messages
+    // Send message
     function sendMessage() {
       const msg = chatInput.value.trim();
       if (msg === "") return;
 
-      const messageData = {
-        name: uniqueName,
-        message: msg,
-        time: new Date().toLocaleTimeString()
-      };
+      const userMsg = { name: uniqueName, message: msg, time: new Date().toLocaleTimeString() };
 
-      // Save message to localStorage
       const messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-      messages.push(messageData);
+      messages.push(userMsg);
+
+      // If it's the first message, trigger SDJ Automations auto-reply
+      if (!messages.some(m => m.name === "SDJ Automations")) {
+        const botMsg = {
+          name: "SDJ Automations",
+          message:
+            "Greetings! Welcome to SDJ Online Support Portal, I am SDJ Automations. To make it easier for our staff members to know who you are, please state your Roblox username, and your Discord username if you have Discord.",
+          time: new Date().toLocaleTimeString()
+        };
+        messages.push(botMsg);
+      }
+
       localStorage.setItem("chatMessages", JSON.stringify(messages));
 
-      displayMessage(messageData);
+      displayMessage(userMsg);
+      displayMessage({ name: "SDJ Automations", message: messages[messages.length - 1].message });
       chatInput.value = "";
       chatBox.scrollTop = chatBox.scrollHeight;
     }
@@ -161,15 +169,16 @@
     // Display message
     function displayMessage({ name, message }) {
       const msgElement = document.createElement("div");
-      msgElement.innerHTML = `<span class='font-semibold text-orange-700'>${name}:</span> ${message}`;
+      const color = name === "SDJ Automations" ? "text-blue-600" : "text-orange-700";
+      msgElement.innerHTML = `<span class='font-semibold ${color}'>${name}:</span> ${message}`;
       chatBox.appendChild(msgElement);
     }
 
-    // Load messages from storage
+    // Load messages
     function loadMessages() {
       chatBox.innerHTML = `<div class="text-center text-gray-500">Welcome back to SDJ Online Support!</div>`;
-      const storedMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-      storedMessages.forEach(displayMessage);
+      const stored = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+      stored.forEach(displayMessage);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
   </script>
