@@ -95,14 +95,17 @@
     const chatInput = document.getElementById("chatInput");
     const sendMsg = document.getElementById("sendMsg");
 
-    // Unique username for chat
-    const uniqueName = "Player" + Math.floor(10000 + Math.random() * 90000);
+    // Generate or retrieve unique username
+    let uniqueName = localStorage.getItem("uniqueUsername");
+    if (!uniqueName) {
+      uniqueName = "Player" + Math.floor(10000 + Math.random() * 90000);
+      localStorage.setItem("uniqueUsername", uniqueName);
+    }
 
-    // Login modal open/close
+    // --- LOGIN MODAL ---
     loginBtn.addEventListener("click", () => loginModal.classList.remove("hidden"));
     cancelLogin.addEventListener("click", () => loginModal.classList.add("hidden"));
 
-    // Login functionality
     submitLogin.addEventListener("click", () => {
       const username = usernameInput.value.trim();
       const password = passwordInput.value.trim();
@@ -121,8 +124,12 @@
       }
     });
 
-    // Online support chat
-    supportBtn.addEventListener("click", () => chatScreen.classList.remove("hidden"));
+    // --- CHAT SYSTEM ---
+    supportBtn.addEventListener("click", () => {
+      chatScreen.classList.remove("hidden");
+      loadMessages();
+    });
+
     exitChat.addEventListener("click", () => chatScreen.classList.add("hidden"));
 
     sendMsg.addEventListener("click", sendMessage);
@@ -130,14 +137,39 @@
       if (e.key === "Enter") sendMessage();
     });
 
+    // Save and display messages
     function sendMessage() {
       const msg = chatInput.value.trim();
       if (msg === "") return;
 
-      const msgElement = document.createElement("div");
-      msgElement.innerHTML = `<span class='font-semibold text-orange-700'>${uniqueName}:</span> ${msg}`;
-      chatBox.appendChild(msgElement);
+      const messageData = {
+        name: uniqueName,
+        message: msg,
+        time: new Date().toLocaleTimeString()
+      };
+
+      // Save message to localStorage
+      const messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+      messages.push(messageData);
+      localStorage.setItem("chatMessages", JSON.stringify(messages));
+
+      displayMessage(messageData);
       chatInput.value = "";
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Display message
+    function displayMessage({ name, message }) {
+      const msgElement = document.createElement("div");
+      msgElement.innerHTML = `<span class='font-semibold text-orange-700'>${name}:</span> ${message}`;
+      chatBox.appendChild(msgElement);
+    }
+
+    // Load messages from storage
+    function loadMessages() {
+      chatBox.innerHTML = `<div class="text-center text-gray-500">Welcome back to SDJ Online Support!</div>`;
+      const storedMessages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+      storedMessages.forEach(displayMessage);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
   </script>
