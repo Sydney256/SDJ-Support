@@ -19,7 +19,7 @@
     <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl p-10 text-center w-11/12 md:w-1/2">
       <h2 class="text-2xl font-semibold mb-6">Welcome to SDJ Support Portal</h2>
       <div class="flex flex-col gap-4">
-        <button class="bg-white text-orange-600 font-semibold py-3 rounded-xl hover:bg-orange-100 transition">
+        <button id="loginBtn" class="bg-white text-orange-600 font-semibold py-3 rounded-xl hover:bg-orange-100 transition">
           Support Login
         </button>
         <button class="bg-orange-700 font-semibold py-3 rounded-xl hover:bg-orange-800 transition">
@@ -34,6 +34,63 @@
     <p>Powered by <span class="font-semibold">Dev Studios</span></p>
     <p>© 2025 Dev Studios. All rights reserved.</p>
   </footer>
+
+  <!-- Login Modal -->
+  <div id="loginModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div class="bg-white text-gray-900 rounded-2xl p-8 w-80 shadow-xl">
+      <h3 class="text-2xl font-semibold mb-4 text-center">Support Login</h3>
+      <input id="username" type="text" placeholder="Username" class="w-full mb-3 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+      <input id="password" type="password" placeholder="Password" class="w-full mb-4 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+      <button id="submitLogin" class="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition">Login</button>
+      <p id="errorMsg" class="text-red-500 text-center mt-3 hidden">Incorrect password. Try again.</p>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loaderScreen" class="hidden fixed inset-0 bg-black/70 flex flex-col items-center justify-center text-white z-50">
+    <div class="w-12 h-12 border-4 border-t-transparent border-white rounded-full animate-spin"></div>
+    <p class="mt-4 text-lg">Logging you in...</p>
+  </div>
+
+  <!-- Success Screen -->
+  <div id="successScreen" class="hidden fixed inset-0 bg-green-600/90 flex flex-col items-center justify-center text-white z-50">
+    <h2 class="text-3xl font-bold mb-2">Successfully Logged in!</h2>
+    <p id="welcomeMsg" class="text-xl"></p>
+  </div>
+
+  <script>
+    const loginBtn = document.getElementById("loginBtn");
+    const loginModal = document.getElementById("loginModal");
+    const submitLogin = document.getElementById("submitLogin");
+    const loaderScreen = document.getElementById("loaderScreen");
+    const successScreen = document.getElementById("successScreen");
+    const errorMsg = document.getElementById("errorMsg");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const welcomeMsg = document.getElementById("welcomeMsg");
+
+    loginBtn.addEventListener("click", () => {
+      loginModal.classList.remove("hidden");
+    });
+
+    submitLogin.addEventListener("click", () => {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (password === "SDJSupport10") {
+        loginModal.classList.add("hidden");
+        loaderScreen.classList.remove("hidden");
+
+        setTimeout(() => {
+          loaderScreen.classList.add("hidden");
+          successScreen.classList.remove("hidden");
+          welcomeMsg.textContent = `Welcome, ${username || "User"}!`;
+        }, 5000);
+      } else {
+        errorMsg.classList.remove("hidden");
+      }
+    });
+  </script>
 
 </body>
 </html>
