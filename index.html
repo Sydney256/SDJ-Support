@@ -5,6 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SDJ Online Support</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .fade-out {
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    /* Loader animation */
+    .loader {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Pulse glow for Reset System button */
+    .pulse-glow {
+      animation: pulse 2s infinite;
+      box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
+      50% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.9); }
+    }
+  </style>
 </head>
 <body class="bg-gradient-to-br from-orange-500 to-yellow-400 flex flex-col min-h-screen text-white">
 
@@ -16,13 +47,13 @@
 
   <!-- Main Content -->
   <main class="flex-grow flex items-center justify-center">
-    <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl p-10 text-center w-11/12 md:w-1/2">
+    <div id="mainContainer" class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl p-10 text-center w-11/12 md:w-1/2">
       <h2 class="text-2xl font-semibold mb-6">Welcome to SDJ Support Portal</h2>
       <div class="flex flex-col gap-4">
         <button id="loginBtn" class="bg-white text-orange-600 font-semibold py-3 rounded-xl hover:bg-orange-100 transition">
           Support Login
         </button>
-        <button id="supportBtn" class="bg-orange-700 font-semibold py-3 rounded-xl hover:bg-orange-800 transition">
+        <button id="chatBtn" class="bg-orange-700 font-semibold py-3 rounded-xl hover:bg-orange-800 transition">
           Online Support
         </button>
       </div>
@@ -35,174 +66,112 @@
     <p>© 2025 Dev Studios. All rights reserved.</p>
   </footer>
 
-  <!-- Login Modal -->
-  <div id="loginModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-    <div class="bg-white text-gray-900 rounded-2xl p-8 w-80 shadow-xl">
-      <h3 class="text-2xl font-semibold mb-4 text-center">Support Login</h3>
-      <input id="username" type="text" placeholder="Username" class="w-full mb-3 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
-      <input id="password" type="password" placeholder="Password" class="w-full mb-4 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
-      <button id="submitLogin" class="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition">Login</button>
-      <button id="cancelLogin" class="w-full mt-2 bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 transition">Cancel</button>
-      <p id="errorMsg" class="text-red-500 text-center mt-3 hidden">Incorrect password. Try again.</p>
-    </div>
-  </div>
-
-  <!-- Loader -->
-  <div id="loaderScreen" class="hidden fixed inset-0 bg-black/70 flex flex-col items-center justify-center text-white z-50">
-    <div class="w-12 h-12 border-4 border-t-transparent border-white rounded-full animate-spin"></div>
-    <p class="mt-4 text-lg">Logging you in...</p>
-  </div>
-
-  <!-- Success Screen -->
-  <div id="successScreen" class="hidden fixed inset-0 bg-green-600/90 flex flex-col items-center justify-center text-white z-50">
-    <h2 class="text-3xl font-bold mb-2">Successfully Logged in!</h2>
-    <p id="welcomeMsg" class="text-xl"></p>
-  </div>
-
-  <!-- Chat Screen -->
-  <div id="chatScreen" class="hidden fixed inset-0 bg-orange-100 text-gray-800 flex flex-col z-50">
-    <header class="bg-orange-600 text-white p-4 text-lg font-semibold flex justify-between items-center">
-      <span>SDJ Online Chat</span>
-      <button id="exitChat" class="bg-white text-orange-700 px-3 py-1 rounded-md hover:bg-gray-200 transition">Exit</button>
-    </header>
-
-    <div id="chatBox" class="flex-1 overflow-y-auto p-4 space-y-2">
-      <div class="text-center text-gray-500">Welcome to SDJ Online Support! Type your message below.</div>
-    </div>
-
-    <div class="p-4 bg-white flex">
-      <input id="chatInput" type="text" placeholder="Type a message..." class="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400" />
-      <button id="sendMsg" class="ml-2 bg-orange-600 text-white px-4 rounded-lg hover:bg-orange-700 transition">Send</button>
-    </div>
-  </div>
-
   <script>
-    // Elements
+    const container = document.getElementById("mainContainer");
     const loginBtn = document.getElementById("loginBtn");
-    const loginModal = document.getElementById("loginModal");
-    const submitLogin = document.getElementById("submitLogin");
-    const cancelLogin = document.getElementById("cancelLogin");
-    const loaderScreen = document.getElementById("loaderScreen");
-    const successScreen = document.getElementById("successScreen");
-    const errorMsg = document.getElementById("errorMsg");
-    const usernameInput = document.getElementById("username");
-    const passwordInput = document.getElementById("password");
-    const welcomeMsg = document.getElementById("welcomeMsg");
-    const supportBtn = document.getElementById("supportBtn");
-    const chatScreen = document.getElementById("chatScreen");
-    const exitChat = document.getElementById("exitChat");
-    const chatBox = document.getElementById("chatBox");
-    const chatInput = document.getElementById("chatInput");
-    const sendMsg = document.getElementById("sendMsg");
+    const chatBtn = document.getElementById("chatBtn");
 
-    // Generate or retrieve unique username
-    let uniqueName = localStorage.getItem("uniqueUsername");
-    if (!uniqueName) {
-      uniqueName = "Player" + Math.floor(10000 + Math.random() * 90000);
-      localStorage.setItem("uniqueUsername", uniqueName);
-    }
+    // LOGIN SECTION
+    loginBtn.addEventListener("click", () => {
+      container.innerHTML = `
+        <h2 class="text-2xl font-semibold mb-6">Support Login</h2>
+        <input id="username" type="text" placeholder="Username" class="w-full p-3 rounded-lg text-black mb-3">
+        <input id="password" type="password" placeholder="Password" class="w-full p-3 rounded-lg text-black mb-3">
+        <button id="submitLogin" class="bg-white text-orange-600 font-semibold py-3 rounded-xl hover:bg-orange-100 transition w-full">Login</button>
+        <button id="cancelLogin" class="bg-gray-700 text-white font-semibold py-3 rounded-xl hover:bg-gray-800 transition w-full mt-3">Cancel</button>
+      `;
 
-    // --- LOGIN MODAL ---
-    loginBtn.addEventListener("click", () => loginModal.classList.remove("hidden"));
-    cancelLogin.addEventListener("click", () => loginModal.classList.add("hidden"));
+      document.getElementById("cancelLogin").onclick = () => location.reload();
 
-    submitLogin.addEventListener("click", () => {
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value.trim();
+      document.getElementById("submitLogin").onclick = () => {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
 
-      if (password === "SDJSupport10") {
-        loginModal.classList.add("hidden");
-        loaderScreen.classList.remove("hidden");
+        if (password === "SDJSupport10") {
+          container.innerHTML = `
+            <div class="flex flex-col items-center">
+              <div class="loader mb-4"></div>
+              <p class="text-xl font-semibold">Logging in...</p>
+            </div>
+          `;
 
-        setTimeout(() => {
-          loaderScreen.classList.add("hidden");
-          successScreen.classList.remove("hidden");
-          welcomeMsg.textContent = `Welcome, ${username || "User"}!`;
-        }, 5000);
-      } else {
-        errorMsg.classList.remove("hidden");
-      }
+          setTimeout(() => {
+            container.innerHTML = `<p class="text-xl font-semibold">Successfully Logged in. Welcome ${username}!</p>`;
+            
+            setTimeout(() => {
+              container.classList.add("fade-out");
+              setTimeout(() => {
+                container.innerHTML = `
+                  <h2 class="text-2xl font-semibold mb-6">System Maintenance</h2>
+                  <p class="mb-4">You can reset the system to clear all chat data and refresh the platform.</p>
+                  <button id="resetBtn" class="bg-red-600 pulse-glow font-semibold py-3 rounded-xl hover:bg-red-700 transition w-full">Reset System</button>
+                `;
+                container.classList.remove("fade-out");
+                
+                document.getElementById("resetBtn").onclick = () => {
+                  localStorage.clear();
+                  alert("System Reset Successful. Reloading...");
+                  location.reload();
+                };
+              }, 1000);
+            }, 5000);
+          }, 2000);
+        } else {
+          alert("Incorrect password!");
+        }
+      };
     });
 
-    // --- CHAT SYSTEM ---
-    supportBtn.addEventListener("click", () => {
-      chatScreen.classList.remove("hidden");
-      loadMessages();
+    // CHAT SECTION
+    chatBtn.addEventListener("click", () => {
+      const userId = Math.floor(Math.random() * 100000);
+      const userName = "player" + userId;
+
+      container.innerHTML = `
+        <div class="text-left w-full h-[400px] flex flex-col">
+          <div id="chatBox" class="flex-grow bg-white/20 rounded-lg p-3 overflow-y-auto mb-3"></div>
+          <div class="flex">
+            <input id="chatInput" type="text" placeholder="Type your message..." class="flex-grow p-3 rounded-l-lg text-black">
+            <button id="sendBtn" class="bg-orange-700 px-5 rounded-r-lg hover:bg-orange-800 transition">Send</button>
+          </div>
+        </div>
+      `;
+
+      const chatBox = document.getElementById("chatBox");
+      const input = document.getElementById("chatInput");
+      const sendBtn = document.getElementById("sendBtn");
+
+      let messageCount = 0;
+
+      // Wipe local storage every 24 hours
+      const lastWipe = localStorage.getItem("lastWipe");
+      if (!lastWipe || Date.now() - lastWipe > 86400000) {
+        localStorage.clear();
+        localStorage.setItem("lastWipe", Date.now());
+      }
+
+      sendBtn.onclick = () => {
+        const text = input.value.trim();
+        if (!text) return;
+        chatBox.innerHTML += `<p><strong>${userName}:</strong> ${text}</p>`;
+        input.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        messageCount++;
+        if (messageCount === 1) {
+          setTimeout(() => {
+            chatBox.innerHTML += `<p><strong>SDJ Automations:</strong> Greetings! Welcome to SDJ Online Support Portal, I am SDJ Automations. To make it easier for our staff members to know who you are please state your Roblox username, and your Discord username if you have Discord.</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+          }, 1000);
+        } else if (messageCount === 2) {
+          setTimeout(() => {
+            chatBox.innerHTML += `<p><strong>SDJ Automations:</strong> Thank you for understanding. Please note our staff members are usually busy, so please cope with us! A staff member will be with you soon.</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+          }, 1000);
+        }
+      };
     });
-
-    exitChat.addEventListener("click", () => chatScreen.classList.add("hidden"));
-
-    sendMsg.addEventListener("click", sendMessage);
-    chatInput.addEventListener("keypress", e => {
-      if (e.key === "Enter") sendMessage();
-    });
-
-    function sendMessage() {
-      const msg = chatInput.value.trim();
-      if (msg === "") return;
-
-      const messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-
-      const userMsg = { name: uniqueName, message: msg, time: new Date().toLocaleTimeString() };
-      messages.push(userMsg);
-      localStorage.setItem("chatMessages", JSON.stringify(messages));
-
-      displayMessage(userMsg);
-
-      // SDJ Automations Responses
-      const userMessagesCount = messages.filter(m => m.name === uniqueName).length;
-      let botMsg = null;
-
-      if (userMessagesCount === 1) {
-        botMsg = {
-          name: "SDJ Automations",
-          message:
-            "Greetings! Welcome to SDJ Online Support Portal, I am SDJ Automations. To make it easier for our staff members to know who you are please state your Roblox username, and your Discord username if you have Discord.",
-          time: new Date().toLocaleTimeString()
-        };
-      } else if (userMessagesCount === 2) {
-        botMsg = {
-          name: "SDJ Automations",
-          message:
-            "Thank you for understanding. Please note our staff members are usually busy, so please cope with us! A staff member will be with you soon.",
-          time: new Date().toLocaleTimeString()
-        };
-      }
-
-      if (botMsg) {
-        messages.push(botMsg);
-        localStorage.setItem("chatMessages", JSON.stringify(messages));
-        setTimeout(() => displayMessage(botMsg), 500);
-      }
-
-      chatInput.value = "";
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function displayMessage({ name, message }) {
-      const msgElement = document.createElement("div");
-      const color = name === "SDJ Automations" ? "text-blue-600" : "text-orange-700";
-      msgElement.innerHTML = `<span class='font-semibold ${color}'>${name}:</span> ${message}`;
-      chatBox.appendChild(msgElement);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function loadMessages() {
-      const data = JSON.parse(localStorage.getItem("chatData") || "{}");
-
-      // Check if older than 24 hours
-      if (data.timestamp && Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
-        localStorage.removeItem("chatMessages");
-        localStorage.removeItem("chatData");
-      }
-
-      chatBox.innerHTML = `<div class="text-center text-gray-500">Welcome back to SDJ Online Support!</div>`;
-      const stored = JSON.parse(localStorage.getItem("chatMessages") || "[]");
-      stored.forEach(displayMessage);
-
-      // Update timestamp
-      localStorage.setItem("chatData", JSON.stringify({ timestamp: Date.now() }));
-    }
   </script>
+
 </body>
 </html>
