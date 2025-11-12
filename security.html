@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SDJ — Security Console</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background: linear-gradient(180deg,#0f172a,#0b1220); color: #e6eef8; }
+  .panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.04); padding:1rem; border-radius:12px; }
+  pre { background:#071029; padding:0.75rem; border-radius:8px; overflow:auto; color:#dbeafe; }
+  .overlay {
+    position: fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background: rgba(2,6,23,0.85); color:white; z-index:9999; font-size:18px;
+  }
+  .bubble { background: rgba(255,255,255,0.02); padding:0.5rem 0.75rem; border-radius:8px; }
+  .danger { background: linear-gradient(90deg,#7f1d1d,#f97316); color:white; }
+</style>
+</head>
+<body class="min-h-screen p-6">
+
+<header class="mb-6">
+  <h1 class="text-3xl font-bold">SDJ Security Console</h1>
+  <p class="mt-1 text-sm opacity-80">Emergency controls, integrity checks, and log helpers for incident response.</p>
+</header>
+
+<main class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+  <!-- Left: Quick actions -->
+  <section class="panel">
+    <h2 class="text-xl font-semibold mb-2">Quick Emergency Actions</h2>
+
+    <div class="mb-3">
+      <button id="lockBtn" class="w-full py-2 px-3 rounded bg-yellow-500 text-black font-semibold">Enable Lockdown Mode</button>
+      <p class="text-xs opacity-70 mt-1">Disable UI interactions for users (sets a flag in localStorage). Useful while investigating compromise.</p>
+    </div>
+
+    <div class="mb-3">
+      <button id="wipeBtn" class="w-full py-2 px-3 rounded bg-red-600 text-white font-semibold">Wipe localStorage (Emergency Reset)</button>
+      <p class="text-xs opacity-70 mt-1">Clears all client-stored chat logs and session data (client-side only).</p>
+    </div>
+
+    <div class="mb-3">
+      <button id="exportBtn" class="w-full py-2 px-3 rounded bg-blue-600 text-white font-semibold">Export localStorage (Download JSON)</button>
+      <p class="text-xs opacity-70 mt-1">Download the current browser storage for offline forensic analysis.</p>
+    </div>
+
+    <div class="mb-3">
+      <button id="fetchServerLogsBtn" class="w-full py-2 px-3 rounded bg-indigo-600 text-white font-semibold">Fetch /admin/logs (if available)</button>
+      <p class="text-xs opacity-70 mt-1">Attempts to GET /admin/logs on your server. Implement server endpoint to return logs.</p>
+    </div>
+
+    <div class="mb-3">
+      <label class="block text-sm mb-1">Upload server log (JSON or txt)</label>
+      <input id="logFile" type="file" accept=".json,.log,.txt" class="w-full text-sm bg-white/5 p-2 rounded" />
+    </div>
+
+    <div class="mt-2">
+      <button id="showLSBtn" class="w-full py-2 px-3 rounded bg-slate-600 text-white">Show localStorage (debug)</button>
+      <p class="text-xs opacity-70 mt-1">Quick view of keys: chatMessages, chatMeta, staffSessions, lastSaveTime.</p>
+    </div>
+  </section>
+
+  <!-- Right: Integrity & instructions -->
+  <section class="panel">
+    <h2 class="text-xl font-semibold mb-2">Integrity Check — index.html</h2>
+
+    <p class="text-sm opacity-80 mb-2">Paste a known-good SHA-256 hex digest for your current index.html and press "Check integrity".</p>
+
+    <div class="mb-3">
+      <input id="expectedHash" placeholder="expected SHA-256 hex (example: e3b0...)" class="w-full p-2 rounded bg-white/5 text-sm" />
+    </div>
+    <div class="mb-3 flex gap-2">
+      <button id="checkHashBtn" class="flex-1 py-2 px-3 rounded bg-emerald-600 font-semibold">Check integrity</button>
+      <button id="computeHashBtn" class="py-2 px-3 rounded bg-sky-600 font-semibold">Compute index.html hash</button>
+    </div>
+    <div id="hashResult" class="mt-2 text-sm"></div>
+
+    <hr class="my-4 opacity-20" />
+
+    <h3 class="font-semibold">Server logging & quick example</h3>
+    <p class="text-xs opacity-80 mt-1">Below is a minimal Node.js example for logging IPs and login events. Deploy it on your server (behind HTTPS) and configure the client to POST login events to it.</p>
+
+    <pre id="nodeSample" class="mt-2 text-sm">
+/* Node.js (Express) - Simple secure logger example */
+const express = require('express');
+const fs = require('fs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const app = express();
+
+app.use(helmet());
+app.use(express.json());
+
+const limiter = rateLimit({ windowMs: 60*1000, max: 60 });
+app.use(limiter);
+
+// Log login events (IP + username)
+app.post('/admin/log-login', (req, res) => {
+  // Use x-forwarded-for if behind proxy/load balancer
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  const { username } = req.body || {};
+  const entry = { time: new Date().toISOString(), ip, username };
+  fs.appendFileSync('./login-events.log', JSON.stringify(entry) + '\\n');
+  res.json({ status: 'ok' });
+});
+
+// Optional: admin endpoint to return logs (protect with auth in real world)
+app.get('/admin/logs', (req, res) => {
+  // IMPORTANT: protect this endpoint with auth in production!
+  const data = fs.existsSync('./login-events.log') ? fs.readFileSync('./login-events.log','utf8') : '';
+  res.type('text').send(data);
+});
+
+app.listen(3000,()=>console.log('logger running on :3000'));
+    </pre>
+
+    <div class="mt-3 text-xs opacity-80">
+      <p><strong>Notes:</strong></p>
+      <ul class="list-disc ml-5">
+        <li>Make sure your server runs behind HTTPS and is protected (auth, firewall).</li>
+        <li>Do <em>not</em> expose raw logs publicly — protect /admin/logs with authentication.</li>
+        <li>Rotate secrets (passwords, webhooks) immediately after compromise.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Full width: results & instructions -->
+  <section class="panel col-span-1 md:col-span-2">
+    <h2 class="text-lg font-semibold mb-2">Console / Results</h2>
+    <div id="console" class="bubble text-sm" style="max-height:320px; overflow:auto;"></div>
+
+    <hr class="my-3 opacity-20" />
+
+    <h3 class="font-semibold mb-1">Emergency checklist</h3>
+    <ol class="text-sm ml-5 list-decimal">
+      <li>Take site into Lockdown Mode (button above).</li>
+      <li>Rotate any exposed secrets: DB passwords, API keys, webhooks, OAuth client secrets.</li>
+      <li>Deploy the logging endpoint above (or use an existing logging/analytics solution) and capture last login IPs.</li>
+      <li>Export localStorage and server logs for forensic review.</li>
+      <li>Rebuild and redeploy a clean version of the site from source control; do not reuse compromised files.</li>
+      <li>When ready, restore data from trusted backups only.</li>
+    </ol>
+  </section>
+</main>
+
+<!-- optional overlay when locked -->
+<div id="lockOverlay" class="overlay hidden">
+  <div class="max-w-xl text-center">
+    <h2 class="text-2xl font-bold mb-2">Site Lockdown Enabled</h2>
+    <p class="mb-4">All user interactions have been disabled to prevent further damage. To end lockdown, open this console and press <em>Disable Lockdown</em>.</p>
+    <button id="unlockBtn" class="py-2 px-4 rounded bg-green-600 font-semibold">Disable Lockdown</button>
+  </div>
+</div>
+
+<script>
+/* ---------- Helpers ---------- */
+const $ = id => document.getElementById(id);
+function log(msg){
+  const c = $('console');
+  const p = document.createElement('div');
+  p.textContent = `[${new Date().toLocaleString()}] ${msg}`;
+  c.prepend(p);
+}
+
+/* ---------- Lockdown Mode ---------- */
+function enableLockdown(){
+  localStorage.setItem('siteLocked', '1');
+  $('lockOverlay').classList.remove('hidden');
+  log('Lockdown enabled: siteLocked=1 in localStorage');
+}
+function disableLockdown(){
+  localStorage.removeItem('siteLocked');
+  $('lockOverlay').classList.add('hidden');
+  log('Lockdown disabled');
+}
+$('lockBtn').onclick = () => {
+  if(confirm('Enable Lockdown? This will set a site flag in localStorage. Users who visit must open this console to clear it.')) enableLockdown();
+};
+$('unlockBtn').onclick = () => {
+  if(confirm('Disable Lockdown?')) disableLockdown();
+};
+
+/* on load, reflect current state */
+if(localStorage.getItem('siteLocked')) $('lockOverlay').classList.remove('hidden');
+
+/* ---------- Emergency actions ---------- */
+$('wipeBtn').onclick = () => {
+  if(confirm('Wipe localStorage on THIS BROWSER? This clears local chat & meta stored in this browser.')) {
+    localStorage.clear();
+    alert('localStorage cleared. Reloading page.');
+    log('localStorage cleared via console (client-side).');
+    location.reload();
+  }
+};
+
+$('exportBtn').onclick = () => {
+  const dump = {};
+  for (let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    dump[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sdj-localstorage-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  log('Exported localStorage to JSON file (download).');
+};
+
+$('showLSBtn').onclick = () => {
+  const keys = [];
+  for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
+  log('localStorage keys: ' + keys.join(', '));
+  alert('localStorage keys:\\n' + keys.join('\\n'));
+};
+
+/* ---------- Upload / inspect server log file ---------- */
+$('logFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const content = reader.result;
+    log(`Uploaded server log file "${f.name}" (${(f.size/1024).toFixed(1)} KB)`);
+    // try to pretty-print JSON, otherwise display as text
+    try {
+      const json = JSON.parse(content);
+      const pretty = JSON.stringify(json, null, 2);
+      const win = window.open('', '_blank');
+      win.document.write('<pre style="white-space:pre-wrap; color:#e6eef8; background:#071029; padding:16px;">' + pretty + '</pre>');
+    } catch (err) {
+      const win = window.open('', '_blank');
+      win.document.write('<pre style="white-space:pre-wrap; color:#e6eef8; background:#071029; padding:16px;">' + content + '</pre>');
+    }
+  };
+  reader.readAsText(f);
+});
+
+/* ---------- Fetch server logs endpoint (if implemented server-side) ---------- */
+$('fetchServerLogsBtn').onclick = async () => {
+  log('Attempting to fetch /admin/logs ...');
+  try {
+    const res = await fetch('/admin/logs', { method: 'GET', cache: 'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const win = window.open('', '_blank');
+    win.document.write('<pre style="white-space:pre-wrap; color:#e6eef8; background:#071029; padding:16px;">' + text + '</pre>');
+    log('Fetched /admin/logs successfully (opened in new tab).');
+  } catch (err) {
+    log('Error fetching /admin/logs: ' + err.message);
+    alert('Could not fetch /admin/logs. Check server endpoint and auth.');
+  }
+};
+
+/* ---------- Integrity check for index.html ---------- */
+/* compute SHA-256 of the response body (index.html), return hex */
+async function sha256Hex(text){
+  const enc = new TextEncoder();
+  const data = enc.encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(hash);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+$('computeHashBtn').onclick = async () => {
+  $('hashResult').textContent = 'Fetching /index.html and computing SHA-256...';
+  try {
+    const r = await fetch('/index.html', { cache: 'no-store' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const txt = await r.text();
+    const h = await sha256Hex(txt);
+    $('hashResult').innerHTML = `<div>Computed SHA-256: <code style="background:#061223;padding:4px;border-radius:6px;">${h}</code></div>`;
+    log('Computed index.html SHA-256: ' + h);
+  } catch (err) {
+    $('hashResult').textContent = 'Error fetching index.html: ' + err.message;
+    log('Error computing index.html hash: ' + err.message);
+  }
+};
+
+$('checkHashBtn').onclick = async () => {
+  const expected = $('expectedHash').value.trim().toLowerCase();
+  if(!expected){ alert('Paste the expected hex digest first'); return; }
+  $('hashResult').textContent = 'Computing and comparing...';
+  try {
+    const r = await fetch('/index.html', { cache: 'no-store' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const txt = await r.text();
+    const h = await sha256Hex(txt);
+    const ok = (h === expected);
+    $('hashResult').innerHTML = ok ? 
+      `<div style="color:#c7f9cc">OK — index.html matches expected digest</div>` :
+      `<div style="color:#ffd6d6">MISMATCH — computed: <code style="background:#061223;padding:4px;border-radius:6px;">${h}</code></div>`;
+    log('Integrity check: ' + (ok ? 'PASS' : 'FAIL') + ' (computed ' + h + ')');
+  } catch (err) {
+    $('hashResult').textContent = 'Error: ' + err.message;
+    log('Integrity check error: ' + err.message);
+  }
+};
+
+/* ---------- Notes about logging IP addresses ---------- */
+/*
+  Browser-side cannot get visitor IP reliably. To log IPs you must:
+  1) Deploy the Node.js snippet printed above on your server.
+  2) From client (when user logs in), POST to that endpoint:
+     fetch('/admin/log-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username }) })
+  3) Server will record req.socket.remoteAddress or X-Forwarded-For.
+  4) Protect /admin/logs endpoint with authenticated admin access.
+*/
+
+/* ---------- Final: initial console message ---------- */
+log('Security console loaded. Use Lockdown to quickly disable UI on this browser. Use server logging for IPs.');
+</script>
+</body>
+</html>
